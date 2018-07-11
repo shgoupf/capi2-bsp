@@ -411,7 +411,7 @@ Signal dummy_q: std_logic_vector(0 to 63);
 Signal dummy_reduce: std_logic;
 
 attribute dont_touch : string;
--- attribute dont_touch of golden_user : signal is "true";
+attribute dont_touch of golden_user : signal is "true";  -- we keep this constraint to avoid optimizing the position of the latch
 attribute dont_touch of dummy_q : signal is "true";
 
 begin
@@ -429,7 +429,7 @@ dummy_reduce <= or_reduce(dummy_q);
 
 dff_golden_user: capi_rise_dff_init1 PORT MAP (
   dout => golden_user,
-  din => cpld_usergolden,   -- corrected since previous value was "golden_user". It was locking binary to  "user image" setting
+  din => cpld_usergolden,      -- corrected since previous "golden_user" value was looping and locking the value to "user" image
   clk   => icap_clk
 );
 
