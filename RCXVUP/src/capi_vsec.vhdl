@@ -1,18 +1,23 @@
 -- *!***************************************************************************
 -- *! Copyright 2014-2018 International Business Machines
--- *!
+-- *! 
 -- *! Licensed under the Apache License, Version 2.0 (the "License");
 -- *! you may not use this file except in compliance with the License.
 -- *! You may obtain a copy of the License at
--- *!
+-- *! 
 -- *!     http://www.apache.org/licenses/LICENSE-2.0
--- *!
+-- *! 
 -- *! Unless required by applicable law or agreed to in writing, software
 -- *! distributed under the License is distributed on an "AS IS" BASIS,
 -- *! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 -- *! See the License for the specific language governing permissions and
 -- *! limitations under the License.
 -- *!
+-- *!***************************************************************************
+-- *! FILENAME    : capi_vsec.vhdl
+-- *! DESCRIPTION : 
+-- *! GENERATOR   : c2v
+-- *! SOURCE FILE : vsec.c
 -- *!***************************************************************************
 
 library ieee;
@@ -29,7 +34,7 @@ ENTITY capi_vsec IS
     cfg_ext_write_byte_enable : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
     cfg_ext_read_data : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
     cfg_ext_read_data_valid : OUT STD_LOGIC;
-
+ 
        -- --------------- --
        hi2c_cmdval: out std_logic;
        hi2c_dataval: out std_logic;
@@ -45,17 +50,17 @@ ENTITY capi_vsec IS
        i2ch_error: in std_logic;
        i2ch_dataout: in std_logic_vector(0 to 7);
        i2ch_ready: in std_logic;
-
+     
        -- -------------- --
        pci_pi_nperst0: in std_logic;
        cpld_usergolden: in std_logic;
        cpld_softreconfigreq: out std_logic;
        cpld_user_bs_req: out std_logic;
        cpld_oe: out std_logic;
-
+       
        -- --------------- --
        f_program_req: out std_logic;                                        -- Level --
-       f_num_blocks: out std_logic_vector(0 to 9);                          -- 128KB Block Size --
+       f_num_blocks: out std_logic_vector(0 to 15);                          -- 128KB Block Size --
        f_start_blk: out std_logic_vector(0 to 9);
        f_program_data: out std_logic_vector(0 to 31);
        f_program_data_val: out std_logic;
@@ -69,11 +74,11 @@ ENTITY capi_vsec IS
        f_states: in std_logic_vector(0 to 31);
        f_memstat: in std_logic_vector(0 to 15);
        f_memstat_past: in std_logic_vector(0 to 15);
-
+              
        -- -------------- --
        f_read_req: out std_logic;
-       f_num_words_m1: out std_logic_vector(0 to 9);                        -- N-1 words --
-       f_read_start_addr: out std_logic_vector(0 to 25);
+       f_num_words_m1: out std_logic_vector(0 to 15);                        -- N-1 words --
+       f_read_start_addr: out std_logic_vector(0 to 31);
        f_read_data: in std_logic_vector(0 to 31);
        f_read_data_val: in std_logic;
        f_read_data_ack: out std_logic;
@@ -90,7 +95,7 @@ ENTITY capi_vsec IS
        prf_rd_overall_samples_data: in std_logic_vector(0 to 63);
        prf_rd_max_lat_dynamic_avg:in std_logic_vector(0 to 31);
        prf_rd_dynamic_bw:in std_logic_vector(0 to 31);  -- NEW
-       prf_wr_dynamic_bw:in std_logic_vector(0 to 31);  -- NEW
+       prf_wr_dynamic_bw:in std_logic_vector(0 to 31);  -- NEW     
        prf_rd_max_lat: in std_logic_vector(0 to 31));
 
 END capi_vsec;
@@ -125,13 +130,13 @@ End Component capi_en_rise_vdff;
 
 Component capi_sreconfig
   PORT(psl_clk: in std_logic;
-
+       
        -- -------------- --
        pci_pi_nperst0: in std_logic;
        cpld_softreconfigreq: out std_logic;
        cpld_user_bs_req: out std_logic;
        cpld_oe: out std_logic;
-
+       
        -- -------------- --
        req_reconfig: in std_logic;
        req_user: in std_logic);
@@ -158,6 +163,16 @@ Component capi_en_rise_vdff_init1
         en    : in std_logic;
         din   : in std_logic_vector(0 to width-1));
 End Component capi_en_rise_vdff_init1;
+
+Component capi_reversebus26
+  PORT(dest: out std_logic_vector(0 to 25);
+       din: in std_logic_vector(0 to 25));
+End Component capi_reversebus26;
+
+Component capi_reversebus16
+  PORT(dest: out std_logic_vector(0 to 15);
+       din: in std_logic_vector(0 to 15));
+End Component capi_reversebus16;
 
 function gate_and (gate : std_logic; din : std_logic_vector) return std_logic_vector is
 begin
@@ -272,8 +287,8 @@ Signal vsec_0x58: std_logic;  -- bool
 Signal vsec_0x5C: std_logic;  -- bool
 Signal vsec_addr: std_logic_vector(0 to 32);  -- v33bit
 Signal vsec_base: std_logic;  -- bool
-Signal vsec_fadr: std_logic_vector(0 to 25);  -- v26bit
-Signal vsec_fsize: std_logic_vector(0 to 9);  -- v10bit
+Signal vsec_fadr: std_logic_vector(0 to 31);  -- v26bit
+Signal vsec_fsize: std_logic_vector(0 to 15);  -- v16bit
 Signal vsec_rddata: std_logic_vector(0 to 31);  -- v32bit
 Signal vsec_wrdata: std_logic_vector(0 to 31);  -- v32bit
 Signal vvpdadr_en: std_logic;  -- bool
@@ -342,52 +357,52 @@ Signal vsec_0x74: std_logic;  -- bool
 Signal vsec_0x78: std_logic;  -- bool
 Signal prf_32_0_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
 Signal prf_32_1_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_2_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
+Signal prf_32_2_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit 
 Signal prf_32_3_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
 Signal prf_32_4_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_5_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_6_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_7_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_8_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_9_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_10_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_11_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_12_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_13_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_14_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_15_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit
+Signal prf_32_5_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit 
+Signal prf_32_6_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_7_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_8_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit   
+Signal prf_32_9_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_10_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_11_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_12_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_13_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_14_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_15_bits_of_prf_data: std_logic_vector(0 to 31);  -- v32bit  
 Signal prf_32_0_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
 Signal prf_32_1_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_2_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
+Signal prf_32_2_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit 
 Signal prf_32_3_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
 Signal prf_32_4_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_5_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_6_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_7_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_8_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_9_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_10_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_11_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_12_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_13_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_14_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_15_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit
+Signal prf_32_5_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit 
+Signal prf_32_6_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_7_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_8_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit   
+Signal prf_32_9_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_10_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_11_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_12_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_13_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_14_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_15_bits_of_prf_data_l1: std_logic_vector(0 to 31);  -- v32bit  
 Signal prf_32_0_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
 Signal prf_32_1_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_2_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
+Signal prf_32_2_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit 
 Signal prf_32_3_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
 Signal prf_32_4_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_5_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_6_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_7_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_8_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_9_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_10_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_11_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_12_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_13_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_14_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
-Signal prf_32_15_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit
+Signal prf_32_5_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit 
+Signal prf_32_6_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_7_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_8_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit   
+Signal prf_32_9_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_10_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_11_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_12_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_13_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_14_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit  
+Signal prf_32_15_bits_of_prf_data_l2: std_logic_vector(0 to 31);  -- v32bit  
 
 begin
 
@@ -599,14 +614,14 @@ begin
     cseb_rdresponse_d <= "00000" ;
 
     cfg_ext_read_data_valid           <= cseb_rden_l_sig;
-
-
+    
+    
     --read data enable - byte offset 0x400 for vsec and 0xB0 for vpd
       --  decode regno>=0x100 or (regno>=0x2C and regno < 0x40)
-      cfg_ext_read_received_valid <= '1' when ((cfg_ext_read_received = '1') and
-                                               ((cfg_ext_register_number(9 downto 8) /= "00") or
+      cfg_ext_read_received_valid <= '1' when ((cfg_ext_read_received = '1') and 
+                                               ((cfg_ext_register_number(9 downto 8) /= "00") or 
                                                ((cfg_ext_register_number(9 downto 0) >= "0000101100") and (cfg_ext_register_number(9 downto 0) < "0001000000")))) else '0';
-
+     
  -- Latch Inputs                        --
     dff_cseb_rden_l: capi_rise_dff PORT MAP (
          dout => cseb_rden_l_sig,
@@ -614,10 +629,10 @@ begin
          clk   => psl_clk
     );
 
-  cfg_ext_write_received_i  <=  '1' when ((cfg_ext_write_received = '1') and
-                                           ((cfg_ext_register_number(9 downto 8) /= "00") or
+  cfg_ext_write_received_i  <=  '1' when ((cfg_ext_write_received = '1') and 
+                                           ((cfg_ext_register_number(9 downto 8) /= "00") or 
                                            ((cfg_ext_register_number(9 downto 0) >= "0000101100") and (cfg_ext_register_number(9 downto 0) < "0001000000")))) else '0';
-
+  
     dff_cseb_wren_l: capi_rise_dff PORT MAP (
          dout => cseb_wren_l,
          din => cfg_ext_write_received_i,
@@ -629,14 +644,14 @@ begin
          din => '0',
          clk   => psl_clk
     );
-
-
+    
+    
 -- address and  Byte enables
       cseb_addr(21 to 30)       <=   cfg_ext_register_number;
       cseb_addr(0 to 20)        <=   "000000000000000000000";
       cseb_addr(31 to 32)       <=   "00";
       cseb_be                   <=   cfg_ext_write_byte_enable;
-
+      
     dff_cseb_addr_l: capi_rise_vdff GENERIC MAP ( width => 33 ) PORT MAP (
          dout => cseb_addr_l,
          din => cseb_addr,
@@ -675,7 +690,7 @@ begin
          din => cpld_usergolden,
          clk   => psl_clk
     );
-	cfg_ext_read_data		<= cseb_rddata_in;
+	cfg_ext_read_data		<= cseb_rddata_in;	
     cseb_wrresp_valid_in <=  not (f_program_data_valinternal  and  cseb_wrresp_req_l  and  cseb_wren_l  and  vsec_0x5C) ;
 
  -- -- End Section -- --
@@ -714,7 +729,7 @@ begin
                    gate_and(vsec_0x60,prf_32_9_bits_of_prf_data_l2) or
                    gate_and(vsec_0x64,prf_32_10_bits_of_prf_data_l2) or
                    gate_and(vsec_0x68,prf_32_11_bits_of_prf_data_l2) or
-                   gate_and(vsec_0x6C,prf_32_12_bits_of_prf_data_l2) or
+                   gate_and(vsec_0x6C,prf_32_12_bits_of_prf_data_l2) or                  
                    gate_and(vsec_0x70,prf_32_13_bits_of_prf_data_l2) or
                    gate_and(vsec_0x74,prf_32_14_bits_of_prf_data_l2) or
                    gate_and(vsec_0x78,prf_32_15_bits_of_prf_data_l2) or
@@ -722,6 +737,7 @@ begin
 
 
 
+    --reversebus(type=v32bit) (cseb_rddata_in, vsec_rddata);
     cseb_rddata_in <= vsec_rddata ;
 -- AM Feb26, 2017    pgen_cseb_rddata_parity_in: capi_pgen32
 -- AM Feb26, 2017. Currently parity is not in use
@@ -733,6 +749,7 @@ begin
 --============================================================================================
 ---- VSEC Registers
 --==============================================================================================--
+    --reversebus(type=v32bit) (vsec_wrdata, cseb_wrdata_l);
     vsec_wrdata <= cseb_wrdata_l ;
 
  -- ----------------------------------- --
@@ -765,7 +782,7 @@ begin
  -- -------------------------------------- --
  -- CAIA/PSL Version  --
  -- -------------------------------------- --
- -- xilinxvsecCdata <= "00000001000000000011000000000001" ; -- old CAPI1 : Version Maj 0x1 minor 0x0  revision level of PSL design 0x3001   
+ -- xilinxvsecCdata <= "00000001000000000011000000000001" ; -- old CAPI1 : Version Maj 0x1 minor 0x0  revision level of PSL design 0x3001
     xilinxvsecCdata <= "00000010000000000000000000000110" ; -- new CAPI2 : Version Maj 0x2 minor 0x0  revision level of PSL design 0x0006
 
     vsecCdata <= xilinxvsecCdata ;
@@ -814,13 +831,13 @@ begin
 -- ----------------------------------- --
  -- I2C interface                --
  -- ----------------------------------- --
-    vfi2c_lo_en <= vsec_0x18  and  cseb_be_l(0)  and  cseb_be_l(2)  and
+    vfi2c_lo_en <= vsec_0x18  and  cseb_be_l(0)  and  cseb_be_l(2)  and 
                                 cseb_be_l(1)  and  cseb_be_l(0)  and  wren_pulse_in ;
-    vfi2c_hi_en <= vsec_0x1C  and  cseb_be_l(0)  and  cseb_be_l(2)  and
+    vfi2c_hi_en <= vsec_0x1C  and  cseb_be_l(0)  and  cseb_be_l(2)  and 
                                 cseb_be_l(1)  and  cseb_be_l(0)  and  wren_pulse_in ;
-
+ 
     i2cacc_wren <= vfi2c_hi_en;
-    i2cacc_rden <= vsec_0x1C and cseb_be_l(0)  and  cseb_be_l(2)  and
+    i2cacc_rden <= vsec_0x1C and cseb_be_l(0)  and  cseb_be_l(2)  and 
                                 cseb_be_l(1)  and  cseb_be_l(0)  and rden_pulse_in;
 
     endff_vsec18data: capi_en_rise_vdff GENERIC MAP ( width => 32 ) PORT MAP (
@@ -842,10 +859,10 @@ begin
  -- ----------------------------------- --
  -- PSL Programming Port                --
  -- ----------------------------------- --
-    vfppp_en <= vsec_0x40  and  cseb_be_l(0)  and  cseb_be_l(2)  and
+    vfppp_en <= vsec_0x40  and  cseb_be_l(0)  and  cseb_be_l(2)  and 
  -- AM Feb27, 2017                               cseb_be_l(1)  and  cseb_be_l(0)  and  wren_pulse ;
                                 cseb_be_l(1)  and  cseb_be_l(0)  and  wren_pulse_in ;
-
+ 
     endff_vsec40data: capi_en_rise_vdff GENERIC MAP ( width => 32 ) PORT MAP (
          dout => vsec40data,
          en => vfppp_en,
@@ -904,7 +921,7 @@ begin
 -- 2. Write vpd address field to desired 4 byte location and write vpd flag to a 1 at the same time.
 -- 3. Software monitors the vpd flag, and when set to 0, write operation is complete. Do not write to update vpd address or data fields before flag is reset to 0.
 
-    vvpdadr_en <= vpd_0x40  and  (cseb_be_l(3)  or  cseb_be_l(2)  or
+    vvpdadr_en <= vpd_0x40  and  (cseb_be_l(3)  or  cseb_be_l(2)  or 
  -- AM Feb27, 2017                                cseb_be_l(1)  or  cseb_be_l(0))  and  wren_pulse ;
                                  cseb_be_l(1)  or  cseb_be_l(0))  and  wren_pulse_in ;
     dff_vvpdadr_en_q1: capi_rise_dff PORT MAP (
@@ -969,7 +986,7 @@ begin
     update_vpd_rdy_flag <= '1' when ((vvpdadr_en = '1') or (vpd_read_done_d = '1' and vpd_read_done_q = '0') or (vpd_write_done_d = '1' and vpd_write_done_q = '0') or vpd_usehardcoded='1') else '0';
     vpd_rdy_flag_d <= vsec_wrdata(0) when  (vvpdadr_en = '1') else
                       '1' when ((vpd_read_done_d = '1' and vpd_read_done_q = '0')) else
-                      '0' when ((vpd_write_done_d = '1' and vpd_write_done_q = '0')) else
+                      '0' when ((vpd_write_done_d = '1' and vpd_write_done_q = '0')) else                     
                       vpd_rdy_flag_q;
     vpd_rdy_flag <=  vpd_rdy_flag_q;
 
@@ -1012,7 +1029,7 @@ begin
 
     -- use hardcoded data generated with this:
     process (vpdadr) begin
-                       case vpdadr is
+                       case vpdadr is                        
                          when "000000" => vpd44data_be <= X"821b0046";
                          when "000001" => vpd44data_be <= X"6c617368";
                          when "000010" => vpd44data_be <= X"47542b20";
@@ -1066,7 +1083,7 @@ begin
  -- -- End Section -- --
 
     i2c_byteop_d <= "000" when (vvpdadr_en = '1') else
-                    (std_logic_vector(unsigned(i2c_byteop_q) + 1)) when ((i2ch_ready_d = '1') and (i2ch_ready_q = '0') and (hi2c_rd_q = '1') and (i2c_monitor_ready_q = '1')) or
+                    (std_logic_vector(unsigned(i2c_byteop_q) + 1)) when ((i2ch_ready_d = '1') and (i2ch_ready_q = '0') and (hi2c_rd_q = '1') and (i2c_monitor_ready_q = '1')) or 
                     ((hi2c_rd_q = '0') and (i2c_monitor_ready_q = '1') and (eeprom_wdelay_count_q = "100110001001011010000")) else
                     i2c_byteop_q;
     dff_i2c_byteop_q: capi_rise_vdff GENERIC MAP ( width => 3 ) PORT MAP (
@@ -1091,8 +1108,8 @@ begin
     );
 
 
-    hi2c_cmdval_d <= '1' when ((vpd_usehardcoded = '0') and
-                     ((vvpdadr_en_q1 = '1' and i2ch_ready = '1' ) or
+    hi2c_cmdval_d <= '1' when ((vpd_usehardcoded = '0') and 
+                     ((vvpdadr_en_q1 = '1' and i2ch_ready = '1' ) or 
                       (i2ch_ready = '1' and (i2c_byteop_d /= i2c_byteop_q) and ((i2c_byteop_d = "001") or (i2c_byteop_d = "010") or (i2c_byteop_d = "011"))))) else '0';
     hi2c_rd_d <= '0' when ((vvpdadr_en_q1 = '1') and (vpd_rdy_flag = '1')) else--flag written to 1 by software indicates write of vpd storage
                  '1' when ((vvpdadr_en_q1 = '1') and (vpd_rdy_flag = '0')) else--flag written to 0 by software indicates read of vpd storage
@@ -1100,7 +1117,7 @@ begin
     hi2c_dataval_d <= '1' when ((hi2c_rd_d = '0') and (hi2c_cmdval_d = '1')) else
                       '0'; --treat write data as valid any time a write is being performed
     --hi2c_cmdin_d(0) <= '1';
-    hi2c_cmdin_d(0 to 5) <= vpdadr;
+    hi2c_cmdin_d(0 to 5) <= vpdadr; 
     hi2c_cmdin_d(6 to 7) <= i2c_byteop_d(1 to 2); --byte address within dword
     hi2c_datain_d <= vpdwrdat(24 to 31) when (i2c_byteop_d = "000") else
                      vpdwrdat(16 to 23) when (i2c_byteop_d = "001") else
@@ -1163,7 +1180,7 @@ begin
    hi2c_dataval <= hi2c_dataval_q;
    hi2c_datain <= hi2c_datain_q;
    hi2c_cmdin <= hi2c_cmdin_q;
-
+ 
     i2ch_ready_d <= i2ch_ready;
     dff_i2ch_ready_q: capi_rise_dff PORT MAP (
          dout => i2ch_ready_q,
@@ -1171,7 +1188,7 @@ begin
          clk   => psl_clk
     );
 
-
+  
   hi2c_addr <= "1010001"; --target the second lowest pages of the EEPROM. First 4 bits must be "1010"
   hi2c_bytecnt <= "00000001"; --Will transfer 1 byte at a time. Must do 4 bytes total so four i2c operations for every vpd access.
   hi2c_blk <= '0'; --not used
@@ -1179,19 +1196,19 @@ begin
  -- ----------------------------------- --
  -- Flash Address Register              --
  -- ----------------------------------- --
-    vfadr_en <= vsec_0x50  and  cseb_be_l(3)  and  cseb_be_l(2)  and
+    vfadr_en <= vsec_0x50  and  cseb_be_l(3)  and  cseb_be_l(2)  and 
  -- AM Feb27, 2017                               cseb_be_l(1)  and  cseb_be_l(0)  and  wren_pulse ;
                                 cseb_be_l(1)  and  cseb_be_l(0)  and  wren_pulse_in ;
 
-    endff_vsec_fadr: capi_en_rise_vdff GENERIC MAP ( width => 26 ) PORT MAP (
+    endff_vsec_fadr: capi_en_rise_vdff GENERIC MAP ( width => 32 ) PORT MAP (
          dout => vsec_fadr,
          en => vfadr_en,
-         din => vsec_wrdata(6 to 31),
+         din => vsec_wrdata,
          clk   => psl_clk
     );
 
 
-    vsec50data <= ( "000000" & vsec_fadr );
+    vsec50data <= ( vsec_fadr );
 
 
     f_start_blk <= vsec50data(6 to 15) ;
@@ -1208,20 +1225,20 @@ begin
  -- ----------------------------------- --
  -- Flash Size Register                 --
  -- ----------------------------------- --
-    vfsize_en <= vsec_0x54  and  cseb_be_l(2)  and
+    vfsize_en <= vsec_0x54  and  cseb_be_l(2)  and 
  -- AM Feb27, 2017                                cseb_be_l(3)  and  wren_pulse ;
                                  cseb_be_l(3)  and  wren_pulse_in ;
 
 
-    endff_vsec_fsize: capi_en_rise_vdff GENERIC MAP ( width => 10 ) PORT MAP (
+    endff_vsec_fsize: capi_en_rise_vdff GENERIC MAP ( width => 16 ) PORT MAP (
          dout => vsec_fsize,
          en => vfsize_en,
-         din => vsec_wrdata(22 to 31),
+         din => vsec_wrdata(16 to 31),
          clk   => psl_clk
     );
 
 
-    vsec54data <= ( "0000000000000000000000" & vsec_fsize );
+    vsec54data <= ( "0000000000000000" & vsec_fsize );
 
 
     f_num_blocks <= std_logic_vector(unsigned(vsec_fsize) + 1) ;
@@ -1252,7 +1269,7 @@ begin
     );
 
 
-    --concat(type=v32bit) (vsec58data, f_ready, f_done, 0b00, flash_rd_req, f_program_req, 0b0000000000,
+    --concat(type=v32bit) (vsec58data, f_ready, f_done, 0b00, flash_rd_req, f_program_req, 0b0000000000, 
     --                                 f_stat_erase, f_stat_program, f_stat_read, 0b000, f_remainder);
     vsec58data <= ( f_ready & f_done & "0" & f_states(31) & flash_rd_req & f_program_reqinternal & "0000000000" & f_stat_erase & f_stat_program & f_stat_read & f_program_data_valinternal & f_read_data_val & '0' & f_remainder );
 
@@ -1262,7 +1279,7 @@ begin
  -- Flash Read / Write Data Port Register      --
  -- ------------------------------------------ --
     -- READ --
-    vfrddp_read <= (vsec_0x5C)  and  cseb_be_l(3)  and  cseb_be_l(2)  and
+    vfrddp_read <= (vsec_0x5C)  and  cseb_be_l(3)  and  cseb_be_l(2)  and 
                                                cseb_be_l(1)  and  cseb_be_l(0)  and  rden_pulse_in ;
 
     --vfrddp_en <= f_read_data_val  and   not vfrddp_val  and  f_read_reqinternal ;
@@ -1278,7 +1295,7 @@ begin
     --f_read_data_ack <=  not vfrddp_val ;
 
     vfrddp_en <= f_read_data_val  and  f_read_data_ack_int  and  f_read_reqinternal ;
-    vfrddp_val_d <= (f_read_data_val  and  not(fiveCfull_d)) ;
+    vfrddp_val_d <= (f_read_data_val  and  not(fiveCfull_d)) ; 
     fiveCfull_d <= ((fiveCfull and not(vfrddp_read)) or vfrddp_en) and f_read_reqinternal;
     dff_fiveCfull: capi_rise_dff PORT MAP (
          dout => fiveCfull,
@@ -1296,7 +1313,7 @@ begin
     f_read_data_ack <=  f_read_data_ack_int ;
 
     -- WRITE --
-    vfwrdp_en <= vsec_0x5C  and  cseb_be_l(3)  and  cseb_be_l(2)  and
+    vfwrdp_en <= vsec_0x5C  and  cseb_be_l(3)  and  cseb_be_l(2)  and 
  -- AM Feb27, 2017                                cseb_be_l(1)  and  cseb_be_l(0)  and  wren_pulse  and  f_program_reqinternal ;
                                  cseb_be_l(1)  and  cseb_be_l(0)  and  wren_pulse_in  and  f_program_reqinternal ;
 
@@ -1328,6 +1345,7 @@ begin
 --============================================================================================
 ---- Address Decode
 --==============================================================================================--
+    --reversebus(type=v33bit) (vsec_addr, cseb_addr_l);
     vsec_addr <= cseb_addr_l ;
 
     vsec_base <= '1' when (vsec_addr(21 to 24)  =  "0100") else '0';  -- 0x4xx Base for Xilinx --
@@ -1380,13 +1398,13 @@ begin
     vsec_0x74 <= '1' when (vsec_base = '1'  and (vsec_addr(25 to 32)  =  "01110100")) else '0'; -- /* 0x74 -- Reserved --
     vsec_0x78 <= '1' when (vsec_base = '1'  and (vsec_addr(25 to 32)  =  "01111000")) else '0'; -- /* 0x78 -- Reserved --
 --     vsec_0x7C <= vsec_base and (vsec_addr(25 to 32)  =  "01111100"); -- /* 0x7C -- Reserved --
-
+  
   --bool vsec_0x70 = vsec_base & (vsec_addr.[25..32] == 0b01110000); /* 0x70 -- Reserved --
   --bool vsec_0x74 = vsec_base & (vsec_addr.[25..32] == 0b01110100); /* 0x74 -- Reserved --
   --bool vsec_0x78 = vsec_base & (vsec_addr.[25..32] == 0b01111000); /* 0x78 -- Reserved --
   --bool vsec_0x7C = vsec_base & (vsec_addr.[25..32] == 0b01111100); /* 0x7C -- Reserved --
---  cseb_waitrequest <= cseb_waitrequestinternal;
-  f_program_data_val <= f_program_data_valinternal;
-  f_program_req <= f_program_reqinternal;
-  f_read_req <= f_read_reqinternal;
+--  cseb_waitrequest <= cseb_waitrequestinternal; 
+  f_program_data_val <= f_program_data_valinternal; 
+  f_program_req <= f_program_reqinternal; 
+  f_read_req <= f_read_reqinternal; 
 END capi_vsec;

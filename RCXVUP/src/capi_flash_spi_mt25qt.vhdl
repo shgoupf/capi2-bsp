@@ -1,18 +1,23 @@
 -- *!***************************************************************************
 -- *! Copyright 2014-2018 International Business Machines
--- *!
+-- *! 
 -- *! Licensed under the Apache License, Version 2.0 (the "License");
 -- *! you may not use this file except in compliance with the License.
 -- *! You may obtain a copy of the License at
--- *!
+-- *! 
 -- *!     http://www.apache.org/licenses/LICENSE-2.0
--- *!
+-- *! 
 -- *! Unless required by applicable law or agreed to in writing, software
 -- *! distributed under the License is distributed on an "AS IS" BASIS,
 -- *! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 -- *! See the License for the specific language governing permissions and
 -- *! limitations under the License.
 -- *!
+-- *!***************************************************************************
+-- *! FILENAME    : capi_flash_spi_mt25qt.vhdl
+-- *! DESCRIPTION : 
+-- *! GENERATOR   : c2v
+-- *! SOURCE FILE : flash.c
 -- *!***************************************************************************
 
 library ieee, UNISIM;
@@ -23,16 +28,16 @@ use ieee.std_logic_misc.all;
 
 ENTITY capi_flash_spi_mt25qt IS
   PORT(psl_clk: in std_logic;
-
+       
        -- --------------- --
        spi_clk: out std_logic;
        spi_cen: out std_logic;
        spi_miso : in std_logic;
-       spi_mosi : out std_logic;
-
+       spi_mosi : out std_logic;      
+ 
        -- -------------- --
        f_program_req: in std_logic;                                         -- Level --
-       f_num_blocks: in std_logic_vector(0 to 9);                           -- 128KB Block Size --
+       f_num_blocks: in std_logic_vector(0 to 15);                           -- 64KB Block Size --
        f_start_blk: in std_logic_vector(0 to 9);
        f_program_data: in std_logic_vector(0 to 31);
        f_program_data_val: in std_logic;
@@ -43,11 +48,11 @@ ENTITY capi_flash_spi_mt25qt IS
        f_stat_program: out std_logic;
        f_stat_read: out std_logic;
        f_remainder: out std_logic_vector(0 to 9);
-
+       
        -- Read Interface --
        f_read_req: in std_logic;
-       f_num_words_m1: in std_logic_vector(0 to 9);                         -- N-1 words --
-       f_read_start_addr: in std_logic_vector(0 to 25);
+       f_num_words_m1: in std_logic_vector(0 to 15);                         -- N-1 words --
+       f_read_start_addr: in std_logic_vector(0 to 31);
        f_read_data: out std_logic_vector(0 to 31);
        f_read_data_val: out std_logic;
        f_read_data_ack: in std_logic);
@@ -128,12 +133,12 @@ Signal erase_sm_p1: std_logic_vector(0 to 4);  -- v5bit
 Signal erase_sm_start_dly: std_logic;  -- bool
 Signal erase_we: std_logic;  -- bool
 Signal esm_adv: std_logic;  -- bool
-Signal esm_blkadr_d: std_logic_vector(0 to 9);  -- v10bit
-Signal esm_blkadr_p1: std_logic_vector(0 to 9);  -- v10bit
-Signal esm_blkadr_q: std_logic_vector(0 to 9);  -- v10bit
-Signal esm_blkcnt_d: std_logic_vector(0 to 9);  -- v10bit
-Signal esm_blkcnt_m1: std_logic_vector(0 to 9);  -- v10bit
-Signal esm_blkcnt_q: std_logic_vector(0 to 9);  -- v10bit
+Signal esm_blkadr_d: std_logic_vector(0 to 15);  -- v16bit
+Signal esm_blkadr_p1: std_logic_vector(0 to 15);  -- v16bit
+Signal esm_blkadr_q: std_logic_vector(0 to 15);  -- v16bit
+Signal esm_blkcnt_d: std_logic_vector(0 to 15);  -- v16bit
+Signal esm_blkcnt_m1: std_logic_vector(0 to 15);  -- v16bit
+Signal esm_blkcnt_q: std_logic_vector(0 to 15);  -- v16bit
 Signal esm_datain_en: std_logic;  -- bool
 Signal esm_done: std_logic;  -- bool
 Signal esm_no_dly_sel: std_logic;  -- bool
@@ -378,8 +383,8 @@ Signal data_sent: std_logic;
 Signal start_address_update: std_logic;
 Signal start_address_d: std_logic_vector(0 to 31);
 Signal start_address: std_logic_vector(0 to 31);
-Signal start_sectors_d: std_logic_vector(0 to 9);
-Signal start_sectors: std_logic_vector(0 to 9);
+Signal start_sectors_d: std_logic_vector(0 to 15);
+Signal start_sectors: std_logic_vector(0 to 15);
 Signal start_sectors_update: std_logic;
 Signal command_update: std_logic;
 Signal command_d: std_logic_vector(0 to 7);
@@ -391,17 +396,17 @@ Signal msm_update_blkadr: std_logic;
 Signal msm_update_blkadr_q: std_logic;
 Signal esm_blkadr: std_logic_vector(0 to 31);
 Signal msm_byteadr: std_logic_vector(0 to 31);
-Signal msm_byteadr_p1: std_logic_vector(0 to 17);
-Signal msm_byteadr_d: std_logic_vector(0 to 17);
+Signal msm_byteadr_p1: std_logic_vector(0 to 23);
+Signal msm_byteadr_d: std_logic_vector(0 to 23);
 Signal msm_update_byteadr: std_logic;
 Signal msm_update_byteadr_q: std_logic;
-Signal msm_byteadr_q: std_logic_vector(0 to 17);
+Signal msm_byteadr_q: std_logic_vector(0 to 23);
 Signal more2erase: std_logic;
-Signal msm_bytecnt_m1: std_logic_vector(0 to 17);
-Signal msm_bytecnt_d: std_logic_vector(0 to 17);
+Signal msm_bytecnt_m1: std_logic_vector(0 to 23);
+Signal msm_bytecnt_d: std_logic_vector(0 to 23);
 Signal msm_update_bytecnt:std_logic;
-Signal msm_bytecnt_q: std_logic_vector(0 to 17);
-Signal msm_bytecnt: std_logic_vector(0 to 17);
+Signal msm_bytecnt_q: std_logic_vector(0 to 23);
+Signal msm_bytecnt: std_logic_vector(0 to 23);
 Signal more2pgm: std_logic;
 Signal more2read: std_logic;
 Signal spi_clk_tristate_n: std_logic;
@@ -514,7 +519,7 @@ Signal spi_cen_startup: std_logic;
 --Signal spi_mosi: std_logic;
 --Signal spi_clk: std_logic;
 --Signal spi_cen: std_logic;
---Signal spi_miso: std_logic;
+--Signal spi_miso: std_logic; 
 Signal clklogic: std_logic;
 Signal spicen: STD_LOGIC_VECTOR(0 DOWNTO 0);
 Signal         spiclk : STD_LOGIC_VECTOR(0 DOWNTO 0);
@@ -593,7 +598,7 @@ frdack(0) <= f_read_data_ack;
  -- Outputs                             --
  -- ----------------------------------- --
 
-    pgm_remainder <= psm_bufcnt_q(0 to 9) when erase_complete='1' else esm_blkcnt_q;
+    pgm_remainder <= psm_bufcnt_q(0 to 9) when erase_complete='1' else esm_blkcnt_q(0 to 9);
 
     f_remainder <= rsm_wrdcnt_q when f_read_req='1' else pgm_remainder;
 
@@ -637,7 +642,7 @@ frdack(0) <= f_read_data_ack;
     ---- State 14 : Queue READ FLAG STATUS REGISTER Command                   ----
     ----            Nxt State 0F
     ---- State 15 : Analyze Current Status                                           ----
-    ----            Nxt State 14 if flash_busy and no flash_timeout
+    ----            Nxt State 14 if flash_busy and no flash_timeout 
     ----            Nxt State 2F if flash_error or flash_timeout
     ----            Nxt State 16 if not flash_busy and not flash_error
     ---- State 16 : Update Address and Remaining Job Size                   ----
@@ -651,10 +656,10 @@ frdack(0) <= f_read_data_ack;
     ----            Nxt State 0F
     ---- State 1A : Queue 4B ADDRESS PAGE PROGRAM Command AND Wait for 256 bytes data in tx fifo                                           ----
     ----            Nxt State 0F
-    ---- State 1B : Queue READ FLAGS STATUS REGISTER Command
+    ---- State 1B : Queue READ FLAGS STATUS REGISTER Command 
     ----            Nxt State 0F
     ---- State 1C : Analyze Current Status                                           ----
-    ----            Nxt State 1B if flash_busy and no flash_timeout
+    ----            Nxt State 1B if flash_busy and no flash_timeout 
     ----            Nxt State 2F if flash_error or flash_timeout
     ----            Nxt State 1D if not flash_busy and not flash_error                                           ----
     ---- State 1D : Update Address and Remaining Job Size
@@ -667,7 +672,7 @@ frdack(0) <= f_read_data_ack;
     ----            Nxt State 2F if f_program_req
     ----            Nxt State 00 if not f_program_req
     ---- State 30 : READ Routine: Sample Starting Address and Job size.
-    ----            Nxt State 31
+    ----            Nxt State 31          
     ---- State 31 : Queue READ Command And Wait for 256 bytes free in read buffer                                 ----
     ----            Nxt State 0F
     ---- State 32 : Update address and job size left                                           ----
@@ -688,7 +693,7 @@ frdack(0) <= f_read_data_ack;
     msm_to_s0x0F <= (msm_s0x02 or msm_s0x03 or msm_s0x04 or msm_s0x05  or msm_s0x11 or msm_s0x12 or msm_s0x13 or msm_s0x14 or msm_s0x18 or msm_s0x19 or msm_s0x1A or msm_s0x1B or msm_s0x31) and not(msm_rst);
     msm_p1 <= (msm_s0x00 or msm_s0x01 or msm_s0x10 or (msm_s0x16 and not(more2erase)) or (msm_s0x15 and not(flash_busy or flash_timeout or flash_error))  or (msm_s0x1C and not(flash_busy or flash_timeout or flash_error)) or msm_s0x17 or msm_s0x30) and not(msm_rst);
     msm_return <= (msm_s0x0F) and not(msm_rst);
-    msm_to_s0x11 <= msm_s0x16 and more2erase and not(msm_rst);
+    msm_to_s0x11 <= msm_s0x16 and more2erase and not(msm_rst); 
     msm_to_s0x18 <= msm_s0x1D and more2pgm and not(msm_rst);
     msm_to_s0x31 <= msm_s0x32 and more2read and not(msm_rst);
     msm_to_s0x14 <= msm_s0x15 and flash_busy and not(flash_error or flash_timeout) and not(msm_rst);
@@ -888,7 +893,7 @@ qspi_sector_erase <= X"D8";--Command then Address
     );
 
     start_address_update <= msm_s0x01;
-    start_address_d <= f_read_start_addr & "000000";
+    start_address_d <= f_read_start_addr;
     endff_start_address_q: capi_en_rise_vdff GENERIC MAP ( width => 32 ) PORT MAP (
          dout => start_address,
          en => start_address_update,
@@ -898,7 +903,7 @@ qspi_sector_erase <= X"D8";--Command then Address
 
     start_sectors_update <= msm_s0x01;
     start_sectors_d <= f_num_blocks; --Size in 64KB sectors
-    endff_start_size_q: capi_en_rise_vdff GENERIC MAP ( width => 10 ) PORT MAP (
+    endff_start_size_q: capi_en_rise_vdff GENERIC MAP ( width => 16 ) PORT MAP (
          dout => start_sectors,
          en => start_sectors_update,
          din => start_sectors_d,
@@ -942,12 +947,12 @@ qspi_sector_erase <= X"D8";--Command then Address
 
     esm_blkadr_p1 <= std_logic_vector(unsigned(esm_blkadr_q) + 1) ;
 
-    esm_blkadr_d <= start_address(0 to 9) when msm_s0x10='1' else esm_blkadr_p1;
+    esm_blkadr_d <= start_address(0 to 15) when msm_s0x10='1' else esm_blkadr_p1;
 
     --bool esm_update_blkadr = (init_cnt_adr | esm_s0x11);--
     msm_update_blkadr <= (msm_s0x10 or msm_s0x16) ;
 
-    endff_esm_blkadr_q: capi_en_rise_vdff GENERIC MAP ( width => 10 ) PORT MAP (
+    endff_esm_blkadr_q: capi_en_rise_vdff GENERIC MAP ( width => 16 ) PORT MAP (
          dout => esm_blkadr_q,
          en => msm_update_blkadr,
          din => esm_blkadr_d,
@@ -959,7 +964,7 @@ qspi_sector_erase <= X"D8";--Command then Address
          clk   => psl_clk
     );
 
-    esm_blkadr <= "000000" & esm_blkadr_q & "0000000000000000";
+    esm_blkadr <= esm_blkadr_q & "0000000000000000"; --64KiB address so lower 16 bits are 0
  -- -- End Section -- --
 
  -- ----------------------------------- --
@@ -968,12 +973,12 @@ qspi_sector_erase <= X"D8";--Command then Address
 
     msm_byteadr_p1 <=std_logic_vector(unsigned(msm_byteadr_q) + 1) ;
 
-    msm_byteadr_d <= (start_address(0 to 17)) when ((msm_s0x30='1') or (msm_s0x17='1')) else msm_byteadr_p1;
+    msm_byteadr_d <= (start_address(0 to 23)) when ((msm_s0x30='1') or (msm_s0x17='1')) else msm_byteadr_p1;
 
     --bool esm_update_blkadr = (init_cnt_adr | esm_s0x11);--
     msm_update_byteadr <= (msm_s0x17 or msm_s0x1D or msm_s0x30 or msm_s0x32) ;
 
-    endff_msm_byteadr_q: capi_en_rise_vdff GENERIC MAP ( width => 18 ) PORT MAP (
+    endff_msm_byteadr_q: capi_en_rise_vdff GENERIC MAP ( width => 24 ) PORT MAP (
          dout => msm_byteadr_q,
          en => msm_update_byteadr,
          din => msm_byteadr_d,
@@ -985,7 +990,7 @@ qspi_sector_erase <= X"D8";--Command then Address
          clk   => psl_clk
     );
 
-    msm_byteadr <= "000000" & msm_byteadr_q & "00000000";
+    msm_byteadr <= msm_byteadr_q & "00000000"; --256 Byte address so lower 8 bits are 0
 
     address_d <= esm_blkadr when (msm_update_blkadr_q = '1') else
                msm_byteadr when (msm_update_byteadr_q = '1') else
@@ -1006,7 +1011,7 @@ qspi_sector_erase <= X"D8";--Command then Address
 
     esm_update_blkcnt <= msm_s0x10 or msm_s0x16 ;
 
-    endff_esm_blkcnt_q: capi_en_rise_vdff GENERIC MAP ( width => 10 ) PORT MAP (
+    endff_esm_blkcnt_q: capi_en_rise_vdff GENERIC MAP ( width => 16 ) PORT MAP (
          dout => esm_blkcnt_q,
          en => esm_update_blkcnt,
          din => esm_blkcnt_d,
@@ -1026,7 +1031,7 @@ qspi_sector_erase <= X"D8";--Command then Address
 
     msm_update_bytecnt <= msm_s0x17 or msm_s0x1D or msm_s0x30 or msm_s0x32;
 
-    endff_msm_bytecnt_q: capi_en_rise_vdff GENERIC MAP ( width => 18 ) PORT MAP (
+    endff_msm_bytecnt_q: capi_en_rise_vdff GENERIC MAP ( width => 24 ) PORT MAP (
          dout => msm_bytecnt_q,
          en => msm_update_bytecnt,
          din => msm_bytecnt_d,
@@ -1064,7 +1069,7 @@ qspi_sector_erase <= X"D8";--Command then Address
     ----            Nxt State 6 if no more address and data to send
     ----            Nxt State 8 if no more address and no data to send
     ---- State 06  : Target Data Byte            ----
-    ----            Nxt State 7
+    ----            Nxt State 7 
     ---- State 07  : Drain Data Byte            ----
     ----            Nxt State 6 if more data bytes
     ----            Nxt State 8 if no more data to send
@@ -1163,7 +1168,7 @@ address_done <= '1' when (dsm_s0x05 = '1' and (address_bytepos = "11")) else
                 '0';
 
     total_dbytes_d <= "11111111" when ((msm_s0x1A = '1') or (msm_s0x31 = '1')) else
-                      std_logic_vector(unsigned(total_dbytes) - 1) when (dsm_s0x07 = '1') else
+                      std_logic_vector(unsigned(total_dbytes) - 1) when (dsm_s0x07 = '1') else 
                      "00000000";
     total_dbytes_update <= msm_s0x1A or msm_s0x31 or msm_s0x14 or msm_s0x1B or (dsm_s0x07 and drain_sm_adv);
     endff_total_dbytes_q: capi_en_rise_vdff GENERIC MAP ( width => 8 ) PORT MAP (
@@ -1360,7 +1365,7 @@ in_byte_update(7) <= '1' when ((spi_clk_qq = '0') and (spi_clk_int = '1') and ((
          din => spi_cs_d,
          clk   => psl_clk
     );
-
+    
     dff_spi_cs: capi_rise_dff_init1 PORT MAP (
          dout => spi_cen,
          din => spi_cs_q,
@@ -1368,7 +1373,7 @@ in_byte_update(7) <= '1' when ((spi_clk_qq = '0') and (spi_clk_int = '1') and ((
     );
 
  -- -- End Section -- --
-
+ 
  -- ----------------------------------- --
  -- Write FIFO                  --
  -- ----------------------------------- --
@@ -1384,7 +1389,7 @@ in_byte_update(7) <= '1' when ((spi_clk_qq = '0') and (spi_clk_int = '1') and ((
          din => pgm_data_mux_d,
          clk   => psl_clk
     );
-    pgm_fifo_wrdata <= f_program_data(24 to 31) when (pgm_data_mux_q = "00") else
+    pgm_fifo_wrdata <= f_program_data(24 to 31) when (pgm_data_mux_q = "00") else 
                        f_program_data(16 to 23) when (pgm_data_mux_q = "01") else
                        f_program_data(8 to 15) when (pgm_data_mux_q = "10") else
                        f_program_data(0 to 7);
@@ -1453,8 +1458,8 @@ in_byte_update(7) <= '1' when ((spi_clk_qq = '0') and (spi_clk_int = '1') and ((
          dout => rd_fifo_cnt,
          din =>  rd_fifo_cnt_d,
          clk   => psl_clk
-    );
-    rxfifo_rec_256B <= not(or_reduce(rd_fifo_cnt(0 to 1)));
+    );           
+    rxfifo_rec_256B <= not(or_reduce(rd_fifo_cnt(0 to 1)));         
     rxfifo_has_4B <= or_reduce(rd_fifo_cnt(0 to 7));
 
     --Fifo read side
@@ -1500,7 +1505,7 @@ in_byte_update(7) <= '1' when ((spi_clk_qq = '0') and (spi_clk_int = '1') and ((
          dout => rd_fifo_pull_q,
          din =>  rd_fifo_pull,
          clk   => psl_clk
-    );
+    );  
     f_read_data_d(0 to 7) <= rd_fifo_rddata when (rd_pull4B_q4 = '1') else f_read_data_q(0 to 7);
     f_read_data_d(8 to 15) <= rd_fifo_rddata when (rd_pull4B_q3 = '1') else f_read_data_q(8 to 15);
     f_read_data_d(16 to 23) <= rd_fifo_rddata when (rd_pull4B_q2 = '1') else f_read_data_q(16 to 23);
@@ -1512,7 +1517,7 @@ in_byte_update(7) <= '1' when ((spi_clk_qq = '0') and (spi_clk_int = '1') and ((
          clk   => psl_clk
     );
     f_read_data_val_d <= '0' when ((f_read_data_ack = '1') or (msm_s0x00 = '1')) else '1';
-    update_frval <= f_read_data_ack or msm_s0x00 or (rd_pull4B_q4);
+    update_frval <= f_read_data_ack or msm_s0x00 or (rd_pull4B_q4);  
     dff_f_read_data_val_q: capi_en_rise_dff PORT MAP (
          dout => f_read_data_val_q,
          en =>  update_frval,

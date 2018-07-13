@@ -164,7 +164,8 @@ Component capi_vsec
 
        -- --------------- --
          f_program_req                 : out   std_logic                   ;                                        -- Level --
-         f_num_blocks                  : out   std_logic_vector(0 to 9)    ;                          -- 128KB Block Size --
+         -- f_num_blocks                  : out   std_logic_vector(0 to 9)    ;                          -- 128KB Block Size --
+         f_num_blocks: out std_logic_vector(0 to 15);                          -- 128KB Block Size --
          f_start_blk                   : out   std_logic_vector(0 to 9);
          f_program_data                : out   std_logic_vector(0 to 31);
          f_program_data_val            : out   std_logic;
@@ -180,8 +181,10 @@ Component capi_vsec
          f_memstat_past                : in    std_logic_vector(0 to 15);
        -- -------------- --
          f_read_req                    : out   std_logic;
-         f_num_words_m1                : out   std_logic_vector(0 to 9)    ;                        -- N-1 words --
-         f_read_start_addr             : out   std_logic_vector(0 to 25);
+         -- f_num_words_m1                : out   std_logic_vector(0 to 9)    ;                        -- N-1 words --
+         -- f_read_start_addr             : out   std_logic_vector(0 to 25);
+         f_num_words_m1: out std_logic_vector(0 to 15);                        -- N-1 words --
+         f_read_start_addr: out std_logic_vector(0 to 31);
          f_read_data                   : in    std_logic_vector(0 to 31);
          f_read_data_val               : in    std_logic;
          f_read_data_ack               : out   std_logic;
@@ -241,7 +244,8 @@ Component capi_flash_spi_mt25qt
 
        -- -------------- --
        f_program_req: in std_logic;                                         -- Level --
-       f_num_blocks: in std_logic_vector(0 to 9);                           -- 128KB Block Size --
+       -- f_num_blocks: in std_logic_vector(0 to 9);                           -- 128KB Block Size --
+       f_num_blocks: in std_logic_vector(0 to 15);                           -- 64KB Block Size --
        f_start_blk: in std_logic_vector(0 to 9);
        f_program_data: in std_logic_vector(0 to 31);
        f_program_data_val: in std_logic;
@@ -255,8 +259,10 @@ Component capi_flash_spi_mt25qt
 
        -- Read Interface --
        f_read_req: in std_logic;
-       f_num_words_m1: in std_logic_vector(0 to 9);                         -- N-1 words --
-       f_read_start_addr: in std_logic_vector(0 to 25);
+       -- f_num_words_m1: in std_logic_vector(0 to 9);                         -- N-1 words --
+       -- f_read_start_addr: in std_logic_vector(0 to 25);
+       f_num_words_m1: in std_logic_vector(0 to 15);                         -- N-1 words --
+       f_read_start_addr: in std_logic_vector(0 to 31);
        f_read_data: out std_logic_vector(0 to 31);
        f_read_data_val: out std_logic;
        f_read_data_ack: in std_logic);
@@ -282,8 +288,10 @@ Signal cpld_user_bs_req: std_logic;  -- bool
 
 
 Signal f_done: std_logic;  -- bool
-Signal f_num_blocks: std_logic_vector(0 to 9);  -- v10bit
-Signal f_num_words_m1: std_logic_vector(0 to 9);  -- v10bit
+-- Signal f_num_blocks: std_logic_vector(0 to 9);  -- v10bit
+-- Signal f_num_words_m1: std_logic_vector(0 to 9);  -- v10bit
+Signal f_num_blocks: std_logic_vector(0 to 15);  -- v16bit
+Signal f_num_words_m1: std_logic_vector(0 to 15);  -- v16bit
 Signal f_program_data: std_logic_vector(0 to 31);  -- v32bit
 Signal f_program_data_ack: std_logic;  -- bool
 Signal f_program_data_val: std_logic;  -- bool
@@ -292,7 +300,8 @@ Signal f_read_data: std_logic_vector(0 to 31);  -- v32bit
 Signal f_read_data_ack: std_logic;  -- bool
 Signal f_read_data_val: std_logic;  -- bool
 Signal f_read_req: std_logic;  -- bool
-Signal f_read_start_addr: std_logic_vector(0 to 25);  -- v26bit
+-- Signal f_read_start_addr: std_logic_vector(0 to 25);  -- v26bit
+Signal f_read_start_addr: std_logic_vector(0 to 31);  -- v32bit
 Signal f_ready: std_logic;  -- bool
 Signal f_remainder: std_logic_vector(0 to 9);  -- v10bit
 Signal f_start_blk: std_logic_vector(0 to 9);  -- v10bit
@@ -411,7 +420,7 @@ Signal dummy_q: std_logic_vector(0 to 63);
 Signal dummy_reduce: std_logic;
 
 attribute dont_touch : string;
-attribute dont_touch of golden_user : signal is "true";  -- we keep this constraint to avoid optimizing the position of the latch
+attribute dont_touch of golden_user : signal is "true";
 attribute dont_touch of dummy_q : signal is "true";
 
 begin
@@ -426,12 +435,12 @@ dummy_reduce <= or_reduce(dummy_q);
 ---------------------
 -- User vs. Factory image select
 ---------------------
-
-dff_golden_user: capi_rise_dff_init1 PORT MAP (
-  dout => golden_user,
-  din => cpld_usergolden,      -- corrected since previous "golden_user" value was looping and locking the value to "user" image
-  clk   => icap_clk
-);
+-- 
+-- dff_golden_user: capi_rise_dff_init1 PORT MAP (
+--   dout => golden_user,
+--   din => golden_user,
+--   clk   => icap_clk
+-- );
 
 
 --===================
@@ -467,7 +476,8 @@ v:       capi_vsec
 
 
          pci_pi_nperst0  => pci_pi_nperst0,
-         cpld_usergolden  => golden_user,
+         cpld_usergolden  => cpld_usergolden,
+         -- cpld_usergolden  => golden_user,
          cpld_softreconfigreq  => cpld_softreconfigreq,
          cpld_user_bs_req  => cpld_user_bs_req,
          cpld_oe   => cpld_oe,
@@ -521,10 +531,9 @@ port map (
 --CFGCLK => CFGCLK, -- 1-bit output: Configuration main clock output
 --CFGMCLK => CFGMCLK, -- 1-bit output: Configuration internal oscillator clock output
 DI => spi_in_startup, -- 4-bit output: Allow receiving on the D input pin
---EOS => EOS, -- 1-bit output: Active-High output signal indicating the End Of Startup
---PREQ => PREQ, -- 1-bit output: PROGRAM request to fabric output
 DO => ("000" & spi_mosi_startup), -- 4-bit input: Allows control of the D pin output
 DTS=> "1110", -- 4-bit input: Allows tristate of the D pin
+
 FCSBO => spi_cen_startup, -- 1-bit input: Contols the FCS_B pin for flash access
 FCSBTS => '0', -- 1-bit input: Tristate the FCS_B pin
 GSR => '0', -- 1-bit input: Global Set/Reset input (GSR cannot be used for the port)
@@ -588,7 +597,8 @@ spi_in_primary <= spi_in_startup;
          f_remainder => f_remainder,
          f_read_req => f_read_req,
          f_num_words_m1 => f_num_words_m1,
-         f_read_start_addr => '0' & f_read_start_addr(1 to 25),
+         -- f_read_start_addr => '0' & f_read_start_addr(1 to 25), -- no need for extra bit
+         f_read_start_addr => f_read_start_addr,
          f_read_data => f_read_data,
          f_read_data_val => f_read_data_val,
          f_read_data_ack => f_read_data_ack,
@@ -596,9 +606,12 @@ spi_in_primary <= spi_in_startup;
     );
 
 --Logic to control which spi to drive. size on ad 9v3 is 32MiB per spi.
---f_read_start_addr(0) is 32MB address select bit. 0 will drive primary spi, and 1 will drive secondary.
-drive_primary <= not(f_read_start_addr(0));
-drive_secondary <= f_read_start_addr(0);
+-- Initially f_read_start_addr(0) is 32MB address select bit. 0 will drive primary spi, and 1 will drive secondary.
+-- has been manually updated to 128MB for RCXVUP/VU9P AC june 2018
+-- drive_primary <= not(f_read_start_addr(0));
+-- drive_secondary <= f_read_start_addr(0);
+drive_primary <= not(f_read_start_addr(4));
+drive_secondary <= f_read_start_addr(4);
 spi_clk <= fspi_clk;
 spi_cen_primary <= fspi_cen when (drive_primary = '1') else '1';
 spi_mosi_primary <= fspi_mosi when (drive_primary = '1') else '1';
