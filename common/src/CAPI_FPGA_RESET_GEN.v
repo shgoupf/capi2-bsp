@@ -38,8 +38,8 @@ module CAPI_FPGA_RESET_GEN
        pll_locked_counter_l <= pll_locked_counter_l + 10'd1  ;
 
    always @(posedge CLK)
-     reg_reset <= pll_locked_counter_l != COUNT_TO           ;
+     reset_reg <= pll_locked_counter_l != COUNT_TO           ;
 
-   assign RESET = reg_reset                                  ;
+   assign RESET = reset_reg                                  ;
 
 endmodule
